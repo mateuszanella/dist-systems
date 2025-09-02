@@ -74,11 +74,12 @@ Cada worker executará um loop contínuo com a seguinte lógica:
    - **Se um `id` for retornado**:
      a. O worker agora tem um "lock" exclusivo sobre este evento.
      b. Gerar o valor (palavra/string).
-     c. Executar `UPDATE events SET value = :generated_value WHERE id = :locked_id;`.
-     d. **Commitar a transação**. Isso libera o lock e torna a atualização visível para todos.
+     c. A operação de processamento do evento deve levar no mínimo 100ms (simulado com um `sleep`).
+     d. Executar `UPDATE events SET value = :generated_value WHERE id = :locked_id;`.
+     e. **Commitar a transação**. Isso libera o lock e torna a atualização visível para todos.
    - **Se nenhum `id` for retornado**:
      a. Significa que não há eventos pendentes ou todos estão bloqueados por outros workers.
      b. **Rollback** da transação (uma boa prática, embora nada tenha sido alterado).
-     c. O worker deve esperar por um curto período (ex: 1 segundo com um pouco de jitter, `sleep(1 + rand(0, 0.5))`) antes de tentar novamente. Isso evita sobrecarregar o banco de dados com queries vazias.
+     c. O worker deve esperar por 100ms antes de tentar novamente para evitar sobrecarregar o banco de dados.
 
 Este design garante que cada evento pendente seja processado por exatamente um worker, de forma segura e concorrente.
