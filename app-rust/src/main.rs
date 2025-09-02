@@ -1,13 +1,12 @@
-use axum::{routing::get, Router};
 use std::net::SocketAddr;
 
-async fn root() -> &'static str {
-    "ok"
-}
+mod routing;
+
+use routing::route::create_router;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/", get(root));
+    let app = create_router();
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
 
