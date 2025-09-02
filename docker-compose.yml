@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123123123
+      MYSQL_DATABASE: prod
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      test: mysqladmin ping -h 127.0.0.1 -u root --password="123123123"
+
+volumes:
+  mysql_data:
