@@ -158,7 +158,7 @@ async function processEvent() {
         const [rows] = await connection.execute('SELECT id FROM events WHERE value IS NULL LIMIT 1 FOR UPDATE SKIP LOCKED');
 
         if (rows.length === 0) {
-            await connection.execute('ROLLBACK');
+            await connection.query('ROLLBACK');
             return false; // No events to process
         }
 
@@ -167,7 +167,25 @@ async function processEvent() {
         // Simulate work
         await new Promise(resolve => setTimeout(resolve, 100)); // 100ms
 
-        const randomWord = getRandomPortugueseWord();
+        let randomWord;
+        let wordExists = true;
+        // Retry up to 10 times to find a unique word.
+        for (let i = 0; i < 10 && wordExists; i++) {
+            randomWord = getRandomPortugueseWord();
+            const [wordRows] = await connection.execute('SELECT 1 FROM events WHERE value = ?', [randomWord]);
+            if (wordRows.length === 0) {
+                wordExists = false;
+            }
+        }
+
+        if (wordExists) {
+            // Could not find a unique word after several attempts.
+            // To prevent blocking, we rollback and another worker can try processing this event later.
+            await connection.query('ROLLBACK');
+            console.log(`Could not find a unique word for event ID: ${eventID}. Skipping for now.`);
+            return false;
+        }
+
         await connection.execute('UPDATE events SET value = ? WHERE id = ?', [randomWord, eventID]);
         await connection.query('COMMIT');
         console.log(`Processed event ID: ${eventID}`);

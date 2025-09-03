@@ -99,7 +99,28 @@ pub async fn process_event(pool: &DbPool) -> Result<bool, Box<dyn std::error::Er
     .await?;
 
     if let Some(event_id) = id {
-        let value = generate_random_word();
+        let mut value = String::new();
+        let mut found_unique_word = false;
+
+        for _ in 0..10 {
+            let random_word = generate_random_word();
+            let exists: Option<i32> = sqlx::query_scalar("SELECT 1 FROM events WHERE value = ?")
+                .bind(&random_word)
+                .fetch_optional(&mut *tx)
+                .await?;
+
+            if exists.is_none() {
+                value = random_word;
+                found_unique_word = true;
+                break;
+            }
+        }
+
+        if !found_unique_word {
+            log::info!("Could not find a unique word for event ID: {}. Skipping for now.", event_id);
+            // Transaction will be rolled back as tx is dropped.
+            return Ok(false);
+        }
 
         sqlx::query("UPDATE events SET value = ? WHERE id = ?")
             .bind(&value)

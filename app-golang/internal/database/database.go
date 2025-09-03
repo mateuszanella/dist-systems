@@ -199,7 +199,30 @@ func ProcessEvent() (bool, error) {
 	// Simulate work
 	time.Sleep(100 * time.Millisecond)
 
-	value := getRandomWord()
+	var value string
+	foundUniqueWord := false
+	for range 10 {
+		value = getRandomWord()
+		var placeholder int
+		err := tx.QueryRow("SELECT 1 FROM events WHERE value = ?", value).Scan(&placeholder)
+		if err == sql.ErrNoRows {
+			// The word doesn't exist, we found a unique one.
+			foundUniqueWord = true
+			break
+		}
+		if err != nil {
+			// A real error occurred during the check.
+			return false, fmt.Errorf("could not check if word exists: %w", err)
+		}
+		// Word exists, loop will continue.
+	}
+
+	if !foundUniqueWord {
+		log.Printf("Could not find a unique word for event ID: %d after 10 attempts. Skipping for now.", id)
+		// The transaction will be rolled back by defer.
+		return false, nil
+	}
+
 	_, err = tx.Exec("UPDATE events SET value = ? WHERE id = ?", value, id)
 	if err != nil {
 		return false, fmt.Errorf("could not update event: %w", err)
