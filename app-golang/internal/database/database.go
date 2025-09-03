@@ -1,16 +1,22 @@
 package database
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
+	"os"
+	"strings"
 	"time"
 
-	"github.com/brianvoe/gofakeit/v6"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var DB *sql.DB
+var (
+	DB              *sql.DB
+	portugueseWords []string
+)
 
 func InitDB() {
 	dsn := "root:123123123@tcp(mysql:3306)/prod?parseTime=true"
@@ -37,6 +43,11 @@ func InitDB() {
 	log.Println("database connection successful")
 	if err := createSchema(); err != nil {
 		log.Fatalf("could not create schema: %v", err)
+	}
+
+	rand.Seed(time.Now().UnixNano()) // Seed the random number generator
+	if err := loadWords(); err != nil {
+		log.Fatalf("could not load portuguese words: %v", err)
 	}
 }
 
@@ -102,9 +113,8 @@ func CreateSyncEvent() (*Event, error) {
 		return nil, fmt.Errorf("could not create async event for sync processing: %w", err)
 	}
 
-	// Poll for the event to be processed
-	timeout := time.After(30 * time.Second) // 30-second timeout
-	ticker := time.NewTicker(200 * time.Millisecond) // Poll every 200ms
+	timeout := time.After(30 * time.Second)
+	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
@@ -189,7 +199,7 @@ func ProcessEvent() (bool, error) {
 	// Simulate work
 	time.Sleep(100 * time.Millisecond)
 
-	value := gofakeit.Word()
+	value := getRandomWord()
 	_, err = tx.Exec("UPDATE events SET value = ? WHERE id = ?", value, id)
 	if err != nil {
 		return false, fmt.Errorf("could not update event: %w", err)
@@ -201,4 +211,37 @@ func ProcessEvent() (bool, error) {
 
 	log.Printf("processed event ID: %d", id)
 	return true, nil
+}
+
+func loadWords() error {
+	file, err := os.Open("data/words.txt")
+	if err != nil {
+		return fmt.Errorf("could not open words file: %w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		word := strings.TrimSpace(scanner.Text())
+		if word != "" {
+			portugueseWords = append(portugueseWords, word)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading words file: %w", err)
+	}
+
+	if len(portugueseWords) == 0 {
+		return fmt.Errorf("no words found in words.txt")
+	}
+	log.Printf("loaded %d words", len(portugueseWords))
+	return nil
+}
+
+func getRandomWord() string {
+	if len(portugueseWords) == 0 {
+		return "fallback_word"
+	}
+	return portugueseWords[rand.Intn(len(portugueseWords))]
 }
