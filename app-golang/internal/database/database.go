@@ -97,28 +97,30 @@ type Event struct {
 }
 
 func CreateSyncEvent() (*Event, error) {
-	tx, err := DB.Begin()
+	event, err := CreateAsyncEvent()
 	if err != nil {
-		return nil, fmt.Errorf("could not begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	id, err := GetNewID(tx)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create async event for sync processing: %w", err)
 	}
 
-	value := gofakeit.Word()
-	_, err = tx.Exec("INSERT INTO events (id, value) VALUES (?, ?)", id, value)
-	if err != nil {
-		return nil, fmt.Errorf("could not insert event: %w", err)
-	}
+	// Poll for the event to be processed
+	timeout := time.After(30 * time.Second) // 30-second timeout
+	ticker := time.NewTicker(200 * time.Millisecond) // Poll every 200ms
+	defer ticker.Stop()
 
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("could not commit transaction: %w", err)
+	for {
+		select {
+		case <-timeout:
+			return nil, fmt.Errorf("timeout waiting for event %d to be processed", event.ID)
+		case <-ticker.C:
+			processedEvent, err := GetEventByID(event.ID)
+			if err != nil {
+				return nil, fmt.Errorf("error getting event %d during polling: %w", event.ID, err)
+			}
+			if processedEvent != nil && processedEvent.Value != "" {
+				return processedEvent, nil
+			}
+		}
 	}
-
-	return &Event{ID: id, Value: value}, nil
 }
 
 func CreateAsyncEvent() (*Event, error) {
@@ -147,7 +149,8 @@ func CreateAsyncEvent() (*Event, error) {
 
 func GetEventCount() (int, error) {
 	var count int
-	err := DB.QueryRow("SELECT COUNT(*) FROM events").Scan(&count)
+	// only works if there is no deletes on the application
+	err := DB.QueryRow("SELECT id FROM status").Scan(&count)
 	return count, err
 }
 
