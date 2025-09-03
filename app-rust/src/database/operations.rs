@@ -2,8 +2,26 @@ use crate::database::pool::DbPool;
 use crate::models::event::Event;
 use sqlx::{MySql, Transaction};
 use std::time::Duration;
-use std::fs;
 use rand::Rng;
+
+const WORDS: &[&str] = &[
+    "casa", "carro", "arvore", "flor", "ceu", "terra", "agua", "fogo", "vento", "sol",
+    "lua", "estrela", "nuvem", "chuva", "rio", "mar", "montanha", "cidade", "pessoa", "amor",
+    "paz", "alegria", "trabalho", "escola", "computador", "telefone", "livro", "caneta", "papel", "mesa",
+    "cadeira", "porta", "janela", "rua", "parque", "jardim", "cozinha", "quarto", "banheiro", "comida",
+    "bebida", "fruta", "legume", "pao", "leite", "cafe", "cha", "acucar", "sal", "pimenta",
+    "chocolate", "biscoito", "bolo", "pudim", "sopa", "carne", "peixe", "frango", "arroz", "feijao",
+    "macarrao", "pizza", "hamburguer", "sanduiche", "salada", "suco", "refrigerante", "cerveja", "vinho", "musica",
+    "filme", "jogo", "esporte", "viagem", "ferias", "praia", "montanha", "floresta", "deserto", "neve",
+    "gelo", "calor", "frio", "luz", "sombra", "barulho", "silencio", "tempo", "hora", "dia",
+    "noite", "semana", "mes", "ano", "ontem", "hoje", "amanha", "sempre", "nunca", "muito",
+    "pouco", "grande", "pequeno", "alto", "baixo", "forte", "fraco", "rapido", "devagar", "novo",
+    "velho", "bonito", "feio", "bom", "ruim", "feliz", "triste", "rico", "pobre", "limpo",
+    "sujo", "aberto", "fechado", "cheio", "vazio", "quente", "frio", "claro", "escuro", "direita",
+    "esquerda", "frente", "atras", "emcima", "embaixo", "dentro", "fora", "perto", "longe", "verdade",
+    "mentira", "pergunta", "resposta", "ajuda", "obrigado", "desculpe", "porfavor", "sim", "nao", "ola",
+    "adeus"
+];
 
 pub async fn get_new_id(tx: &mut Transaction<'_, MySql>) -> Result<i32, sqlx::Error> {
     let current_id: i32 = sqlx::query_scalar("SELECT id FROM status FOR UPDATE")
@@ -102,26 +120,7 @@ pub async fn process_event(pool: &DbPool) -> Result<bool, Box<dyn std::error::Er
 }
 
 fn generate_random_word() -> String {
-    let words_content = match fs::read_to_string("src/data/words.txt") {
-        Ok(content) => content,
-        Err(e) => {
-            log::error!("Failed to read words.txt: {}", e);
-            return "fallback_word".to_string();
-        }
-    };
-
-    let words: Vec<&str> = words_content
-        .lines()
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty())
-        .collect();
-
-    if words.is_empty() {
-        log::error!("No words found in words.txt");
-        return "fallback_word".to_string();
-    }
-
     let mut rng = rand::thread_rng();
-    let index = rng.gen_range(0..words.len());
-    words[index].to_string()
+    let index = rng.gen_range(0..WORDS.len());
+    WORDS[index].to_string()
 }
