@@ -2,6 +2,8 @@ use crate::database::pool::DbPool;
 use crate::models::event::Event;
 use sqlx::{MySql, Transaction};
 use std::time::Duration;
+use std::fs;
+use rand::Rng;
 
 pub async fn get_new_id(tx: &mut Transaction<'_, MySql>) -> Result<i32, sqlx::Error> {
     let current_id: i32 = sqlx::query_scalar("SELECT id FROM status FOR UPDATE")
@@ -100,14 +102,26 @@ pub async fn process_event(pool: &DbPool) -> Result<bool, Box<dyn std::error::Er
 }
 
 fn generate_random_word() -> String {
-    use rand::Rng;
-    const WORDS: &[&str] = &[
-        "apple", "banana", "cherry", "dog", "elephant", "forest", "guitar", "house",
-        "island", "jungle", "keyboard", "lemon", "mountain", "ocean", "piano", "quiet",
-        "rainbow", "sunset", "tree", "umbrella", "violet", "water", "xenon", "yellow", "zebra"
-    ];
+    let words_content = match fs::read_to_string("src/data/words.txt") {
+        Ok(content) => content,
+        Err(e) => {
+            log::error!("Failed to read words.txt: {}", e);
+            return "fallback_word".to_string();
+        }
+    };
+
+    let words: Vec<&str> = words_content
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .collect();
+
+    if words.is_empty() {
+        log::error!("No words found in words.txt");
+        return "fallback_word".to_string();
+    }
 
     let mut rng = rand::thread_rng();
-    let index = rng.gen_range(0..WORDS.len());
-    WORDS[index].to_string()
+    let index = rng.gen_range(0..words.len());
+    words[index].to_string()
 }
