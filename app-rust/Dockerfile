@@ -11,10 +11,9 @@ COPY . .
 
 RUN cargo build --release --locked
 
-FROM debian:bullseye-slim AS runtime
+FROM alpine:latest AS runtime
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tini \
-&& rm -rf /var/lib/apt/lists/*
+RUN apk --no-cache add ca-certificates tini
 
 ENV RUST_LOG=info
 WORKDIR /app
@@ -22,5 +21,6 @@ COPY --from=builder /app/axum_mysql_app/target/release/axum_mysql_app /app/app
 COPY --from=builder /app/axum_mysql_app/migrations /app/migrations
 
 EXPOSE 8080
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/app/app"]
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["/app/app", "server"]
+CMD ["/app/app", "server"]
