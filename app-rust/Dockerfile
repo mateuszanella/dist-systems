@@ -23,4 +23,4 @@ COPY --from=builder /app/axum_mysql_app/migrations /app/migrations
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/app/app"]
+CMD ["/app/app", "server"]

@@ -1,27 +1,33 @@
-use std::net::SocketAddr;
-
-mod routing;
-
 mod database;
+mod models;
+mod routing;
+mod worker;
 
 use database::pool::create_pool;
-use routing::route::create_router;
+use std::env;
 
 #[tokio::main]
-async fn main() {
-    dotenvy::dotenv().ok();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
 
-    tracing_subscriber::fmt::init();
+    let args: Vec<String> = env::args().collect();
+    let mode = args.get(1).map(|s| s.as_str()).unwrap_or("server");
 
-    let pool = create_pool().await.expect("Failed to create database pool");
+    let pool = create_pool().await?;
 
-    let app = create_router(pool);
+    match mode {
+        "worker" => {
+            log::info!("Starting worker mode");
+            worker::run_worker(pool).await?;
+        }
+        "server" | _ => {
+            log::info!("Starting server mode");
+            let app = routing::route::create_router(pool);
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+            log::info!("Server listening on 0.0.0.0:8080");
+            axum::serve(listener, app).await?;
+        }
+    }
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-
-    println!("listening on http://{addr}");
-
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-
-    axum::serve(listener, app).await.unwrap();
+    Ok(())
 }
