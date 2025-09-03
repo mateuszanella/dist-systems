@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use sqlx::query;
 
 pub fn create_router(pool: DbPool) -> Router {
     Router::new()
@@ -23,14 +24,28 @@ async fn create_async_event(State(pool): State<DbPool>) -> &'static str {
     "create_async_event"
 }
 
-async fn get_events_count(State(pool): State<DbPool>) -> &'static str {
-    "get_events_count"
+async fn get_events_count(State(pool): State<DbPool>) -> String {
+    match get_current_event_identifier(State(pool)).await {
+        Some(id) => id.to_string(),
+        None => String::from("No event found or database error"),
+    }
 }
 
 async fn get_event_by_id(State(pool): State<DbPool>) -> &'static str {
     "get_event_by_id"
 }
 
-async fn get_current_event_identifier(State(pool): State<DbPool>) -> u64 {
-    0
+async fn get_current_event_identifier(State(pool): State<DbPool>) -> Option<u64> {
+    let query = "SELECT id FROM status FOR UPDATE";
+
+    match sqlx::query_scalar::<_, u64>(query)
+        .fetch_one(&pool)
+        .await
+    {
+        Ok(id) => Some(id),
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            None
+        }
+    }
 }
