@@ -147,7 +147,8 @@ func CreateAsyncEvent() (*Event, error) {
 
 func GetEventCount() (int, error) {
 	var count int
-	err := DB.QueryRow("SELECT COUNT(*) FROM events").Scan(&count)
+	// only works if there is no deletes on the application
+	err := DB.QueryRow("SELECT id FROM status").Scan(&count)
 	return count, err
 }
 
