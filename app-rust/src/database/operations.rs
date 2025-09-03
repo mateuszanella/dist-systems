@@ -79,20 +79,22 @@ pub async fn process_event(pool: &DbPool) -> Result<bool, Box<dyn std::error::Er
     .await?;
 
     if let Some(event_id) = id {
-        // Simulate work
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
         let value = generate_random_word();
+
         sqlx::query("UPDATE events SET value = ? WHERE id = ?")
             .bind(&value)
+            .bind(event_id)
             .execute(&mut *tx)
             .await?;
 
         tx.commit().await?;
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
         log::info!("Processed event ID: {}", event_id);
         Ok(true)
     } else {
-        tx.rollback().await?;
+        drop(tx);
         Ok(false)
     }
 }
