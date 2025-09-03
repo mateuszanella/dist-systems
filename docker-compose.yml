@@ -16,5 +16,25 @@ services:
       retries: 10
       test: mysqladmin ping -h 127.0.0.1 -u root --password="123123123"
 
+  api-golang:
+    build:
+      context: ./app-golang
+    command: ./api
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-golang:
+    build:
+      context: ./app-golang
+    command: ./worker
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   mysql_data:
