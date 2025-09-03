@@ -34,12 +34,14 @@ async fn create_event(State(pool): State<DbPool>) -> Result<Json<Value>, (Status
 
 async fn create_async_event(State(pool): State<DbPool>) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match operations::create_async_event(&pool).await {
-        Ok(event) => Ok(Json(json!(event))),
+        Ok(event) => Ok(Json(json!({
+            "id": event.id
+        }))),
         Err(e) => {
             log::error!("Failed to create async event: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e.to_string()}))
+                Json(json!({ "error": e.to_string() }))
             ))
         }
     }
