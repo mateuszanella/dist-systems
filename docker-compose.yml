@@ -20,8 +20,6 @@ services:
     build:
       context: ./app-golang
     command: ./api
-    ports:
-      - "8080:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -36,24 +34,54 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  api-rust:
+  api-nodejs:
     build:
-      context: ./app-rust
-    command: ["/app/app", "server"]
-    ports:
-      - "8081:8080"
+      context: ./app-nodejs
+    command: node src/api.js
     depends_on:
       mysql:
         condition: service_healthy
     restart: unless-stopped
 
-  worker-rust:
+  worker-nodejs:
     build:
-      context: ./app-rust
-    command: ["/app/app", "worker"]
+      context: ./app-nodejs
+    command: node src/worker.js
     depends_on:
       mysql:
         condition: service_healthy
+    restart: unless-stopped
+
+  # WIP: Rust Application Services
+#   api-rust:
+#     build:
+#       context: ./app-rust
+#     command: ["/app/app", "server"]
+#     ports:
+#       - "8081:8080" # Expose Rust API on port 8081
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+#     restart: unless-stopped
+
+#   worker-rust:
+#     build:
+#       context: ./app-rust
+#     command: ["/app/app", "worker"]
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+#     restart: unless-stopped
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api-golang
+      - api-nodejs
     restart: unless-stopped
 
 volumes:
