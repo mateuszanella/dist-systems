@@ -1,0 +1,17 @@
+{
+  "name": "app-nodejs",
+  "version": "1.0.0",
+  "description": "Node.js API and Worker for Distributed Systems project",
+  "main": "src/api.js",
+  "scripts": {
+    "start:api": "node src/api.js",
+    "start:worker": "node src/worker.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.9.8"
+  }
+}
