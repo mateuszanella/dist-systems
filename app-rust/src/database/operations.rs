@@ -2,6 +2,26 @@ use crate::database::pool::DbPool;
 use crate::models::event::Event;
 use sqlx::{MySql, Transaction};
 use std::time::Duration;
+use rand::Rng;
+
+const WORDS: &[&str] = &[
+    "casa", "carro", "arvore", "flor", "ceu", "terra", "agua", "fogo", "vento", "sol",
+    "lua", "estrela", "nuvem", "chuva", "rio", "mar", "montanha", "cidade", "pessoa", "amor",
+    "paz", "alegria", "trabalho", "escola", "computador", "telefone", "livro", "caneta", "papel", "mesa",
+    "cadeira", "porta", "janela", "rua", "parque", "jardim", "cozinha", "quarto", "banheiro", "comida",
+    "bebida", "fruta", "legume", "pao", "leite", "cafe", "cha", "acucar", "sal", "pimenta",
+    "chocolate", "biscoito", "bolo", "pudim", "sopa", "carne", "peixe", "frango", "arroz", "feijao",
+    "macarrao", "pizza", "hamburguer", "sanduiche", "salada", "suco", "refrigerante", "cerveja", "vinho", "musica",
+    "filme", "jogo", "esporte", "viagem", "ferias", "praia", "montanha", "floresta", "deserto", "neve",
+    "gelo", "calor", "frio", "luz", "sombra", "barulho", "silencio", "tempo", "hora", "dia",
+    "noite", "semana", "mes", "ano", "ontem", "hoje", "amanha", "sempre", "nunca", "muito",
+    "pouco", "grande", "pequeno", "alto", "baixo", "forte", "fraco", "rapido", "devagar", "novo",
+    "velho", "bonito", "feio", "bom", "ruim", "feliz", "triste", "rico", "pobre", "limpo",
+    "sujo", "aberto", "fechado", "cheio", "vazio", "quente", "frio", "claro", "escuro", "direita",
+    "esquerda", "frente", "atras", "emcima", "embaixo", "dentro", "fora", "perto", "longe", "verdade",
+    "mentira", "pergunta", "resposta", "ajuda", "obrigado", "desculpe", "porfavor", "sim", "nao", "ola",
+    "adeus"
+];
 
 pub async fn get_new_id(tx: &mut Transaction<'_, MySql>) -> Result<i32, sqlx::Error> {
     let current_id: i32 = sqlx::query_scalar("SELECT id FROM status FOR UPDATE")
@@ -79,32 +99,27 @@ pub async fn process_event(pool: &DbPool) -> Result<bool, Box<dyn std::error::Er
     .await?;
 
     if let Some(event_id) = id {
-        // Simulate work
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
         let value = generate_random_word();
+
         sqlx::query("UPDATE events SET value = ? WHERE id = ?")
             .bind(&value)
+            .bind(event_id)
             .execute(&mut *tx)
             .await?;
 
         tx.commit().await?;
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
         log::info!("Processed event ID: {}", event_id);
         Ok(true)
     } else {
-        tx.rollback().await?;
+        drop(tx);
         Ok(false)
     }
 }
 
 fn generate_random_word() -> String {
-    use rand::Rng;
-    const WORDS: &[&str] = &[
-        "apple", "banana", "cherry", "dog", "elephant", "forest", "guitar", "house",
-        "island", "jungle", "keyboard", "lemon", "mountain", "ocean", "piano", "quiet",
-        "rainbow", "sunset", "tree", "umbrella", "violet", "water", "xenon", "yellow", "zebra"
-    ];
-
     let mut rng = rand::thread_rng();
     let index = rng.gen_range(0..WORDS.len());
     WORDS[index].to_string()

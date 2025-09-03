@@ -52,26 +52,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # WIP: Rust Application Services
-#   api-rust:
-#     build:
-#       context: ./app-rust
-#     command: ["/app/app", "server"]
-#     ports:
-#       - "8081:8080" # Expose Rust API on port 8081
-#     depends_on:
-#       mysql:
-#         condition: service_healthy
-#     restart: unless-stopped
+  api-rust:
+    build:
+      context: ./app-rust
+    command: ["/app/app", "server"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
 
-#   worker-rust:
-#     build:
-#       context: ./app-rust
-#     command: ["/app/app", "worker"]
-#     depends_on:
-#       mysql:
-#         condition: service_healthy
-#     restart: unless-stopped
+  worker-rust:
+    build:
+      context: ./app-rust
+    command: ["/app/app", "worker"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
 
   nginx:
     image: nginx:latest
@@ -82,6 +79,7 @@ services:
     depends_on:
       - api-golang
       - api-nodejs
+      - api-rust
     restart: unless-stopped
 
 volumes:
